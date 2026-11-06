@@ -1,0 +1,240 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Reusable Hardened Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validation Blueprint: JobRecord
+    function isValidJobRecord(data) {
+      return data.keys().hasAll([
+        'ownerId', 'jobId', 'sourceVideoId', 'sourceUrl', 'title',
+        'authorizationStatus', 'status', 'currentStep', 'progress',
+        'clipCount', 'viralScore', 'retryCount', 'lastCheckpoint',
+        'isTestMode', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId', 'jobId', 'sourceVideoId', 'sourceUrl', 'title',
+        'channelTitle', 'category', 'authorizationStatus', 'status',
+        'currentStep', 'progress', 'clipCount', 'viralScore',
+        'retryCount', 'lastCheckpoint', 'errorDetails', 'uploadStatus',
+        'isTestMode', 'createdAt', 'updatedAt'
+      ]) &&
+      data.ownerId == request.auth.uid &&
+      isValidId(data.ownerId) &&
+      isValidId(data.jobId) &&
+      data.sourceVideoId is string && data.sourceVideoId.size() >= 1 && data.sourceVideoId.size() <= 64 &&
+      data.sourceUrl is string && data.sourceUrl.size() >= 1 && data.sourceUrl.size() <= 512 &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+      (!('channelTitle' in data) || (data.channelTitle is string && data.channelTitle.size() <= 200)) &&
+      (!('category' in data) || (data.category is string && data.category.size() <= 64)) &&
+      data.authorizationStatus in ['authorized_owner', 'licensed', 'creative_commons', 'pending_declaration'] &&
+      data.status in [
+        'discovered', 'awaiting_approval', 'queued', 'processing',
+        'transcribing', 'analyzing', 'clipping', 'rendering',
+        'quality_check', 'completed', 'awaiting_upload_approval',
+        'uploading', 'uploaded_unlisted', 'failed', 'cancelled'
+      ] &&
+      data.currentStep is string && data.currentStep.size() >= 1 && data.currentStep.size() <= 120 &&
+      data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+      data.clipCount is number && data.clipCount >= 0 && data.clipCount <= 20 &&
+      data.viralScore is number && data.viralScore >= 0 && data.viralScore <= 100 &&
+      data.retryCount is number && data.retryCount >= 0 && data.retryCount <= 10 &&
+      data.lastCheckpoint is string && data.lastCheckpoint.size() >= 1 && data.lastCheckpoint.size() <= 120 &&
+      (!('errorDetails' in data) || (data.errorDetails is string && data.errorDetails.size() <= 1000)) &&
+      (!('uploadStatus' in data) || (data.uploadStatus is string && data.uploadStatus.size() <= 64)) &&
+      data.isTestMode is bool &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: ClipRecord
+    function isValidClipRecord(data) {
+      return data.keys().hasAll([
+        'ownerId', 'clipId', 'jobId', 'sourceVideoId', 'title',
+        'startSeconds', 'endSeconds', 'durationSeconds', 'qualityScore',
+        'privacyStatus', 'approvalStatus', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId', 'clipId', 'jobId', 'sourceVideoId', 'title',
+        'description', 'startSeconds', 'endSeconds', 'durationSeconds',
+        'qualityScore', 'privacyStatus', 'approvalStatus',
+        'youtubeVideoId', 'driveFileId', 'createdAt', 'updatedAt'
+      ]) &&
+      data.ownerId == request.auth.uid &&
+      isValidId(data.ownerId) &&
+      isValidId(data.clipId) &&
+      isValidId(data.jobId) &&
+      data.sourceVideoId is string && data.sourceVideoId.size() >= 1 && data.sourceVideoId.size() <= 64 &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+      (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+      data.startSeconds is number && data.startSeconds >= 0 &&
+      data.endSeconds is number && data.endSeconds > data.startSeconds &&
+      data.durationSeconds is number && data.durationSeconds >= 10 && data.durationSeconds <= 300 &&
+      data.qualityScore is number && data.qualityScore >= 0 && data.qualityScore <= 100 &&
+      data.privacyStatus == 'unlisted' &&
+      data.approvalStatus in ['awaiting_review', 'approved', 'rejected', 'uploaded_unlisted'] &&
+      (!('youtubeVideoId' in data) || (data.youtubeVideoId is string && data.youtubeVideoId.size() <= 64)) &&
+      (!('driveFileId' in data) || (data.driveFileId is string && data.driveFileId.size() <= 128)) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: ActivityEvent
+    function isValidActivityEvent(data) {
+      return data.keys().hasAll(['ownerId', 'eventId', 'category', 'status', 'message', 'createdAt']) &&
+      data.keys().hasOnly(['ownerId', 'eventId', 'category', 'status', 'message', 'jobId', 'createdAt']) &&
+      data.ownerId == request.auth.uid &&
+      isValidId(data.ownerId) &&
+      isValidId(data.eventId) &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 64 &&
+      data.status in ['info', 'success', 'warning', 'error'] &&
+      data.message is string && data.message.size() >= 1 && data.message.size() <= 500 &&
+      (!('jobId' in data) || (data.jobId is string && data.jobId.size() <= 128)) &&
+      data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: UserSettings
+    function isValidUserSettings(data) {
+      return data.keys().hasAll([
+        'ownerId', 'automationEnabled', 'dailyTargetClips', 'scheduleTime',
+        'timezone', 'sourceDiversity', 'requireProcessingApproval',
+        'minQualityScore', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId', 'automationEnabled', 'dailyTargetClips', 'scheduleTime',
+        'timezone', 'sourceDiversity', 'requireProcessingApproval',
+        'minQualityScore', 'updatedAt'
+      ]) &&
+      data.ownerId == request.auth.uid &&
+      isValidId(data.ownerId) &&
+      data.automationEnabled is bool &&
+      data.dailyTargetClips is number && data.dailyTargetClips >= 1 && data.dailyTargetClips <= 20 &&
+      data.scheduleTime is string && data.scheduleTime.size() >= 4 && data.scheduleTime.size() <= 16 &&
+      data.timezone is string && data.timezone.size() >= 2 && data.timezone.size() <= 64 &&
+      data.sourceDiversity is bool &&
+      data.requireProcessingApproval is bool &&
+      data.minQualityScore is number && data.minQualityScore >= 0 && data.minQualityScore <= 100 &&
+      data.updatedAt is timestamp;
+    }
+
+    // Collection: /jobs/{jobId}
+    match /jobs/{jobId} {
+      allow get: if isSignedIn() && isValidId(jobId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() &&
+        isValidId(jobId) &&
+        isValidJobRecord(incoming()) &&
+        incoming().jobId == jobId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(jobId) &&
+        isValidJobRecord(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().jobId == existing().jobId &&
+        incoming().sourceVideoId == existing().sourceVideoId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        existing().status != 'cancelled' &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'currentStep', 'progress', 'clipCount', 'retryCount',
+            'lastCheckpoint', 'errorDetails', 'uploadStatus', 'authorizationStatus', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedUser() && isValidId(jobId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /clips/{clipId}
+    match /clips/{clipId} {
+      allow get: if isSignedIn() && isValidId(clipId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() &&
+        isValidId(clipId) &&
+        isValidClipRecord(incoming()) &&
+        incoming().clipId == clipId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/jobs/$(incoming().jobId)) &&
+        get(/databases/$(database)/documents/jobs/$(incoming().jobId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser() &&
+        isValidId(clipId) &&
+        isValidClipRecord(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().clipId == existing().clipId &&
+        incoming().jobId == existing().jobId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'startSeconds', 'endSeconds', 'durationSeconds',
+            'qualityScore', 'approvalStatus', 'youtubeVideoId', 'driveFileId', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedUser() && isValidId(clipId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /activity_logs/{eventId}
+    match /activity_logs/{eventId} {
+      allow get: if isSignedIn() && isValidId(eventId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() &&
+        isValidId(eventId) &&
+        isValidActivityEvent(incoming()) &&
+        incoming().eventId == eventId &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // Collection: /user_settings/{userId}
+    match /user_settings/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if false;
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        userId == request.auth.uid &&
+        isValidUserSettings(incoming()) &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        userId == request.auth.uid &&
+        isValidUserSettings(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().updatedAt == request.time &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'automationEnabled', 'dailyTargetClips', 'scheduleTime',
+            'timezone', 'sourceDiversity', 'requireProcessingApproval',
+            'minQualityScore', 'updatedAt'
+          ])
+        );
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "ViralMint AI",
+  "description": "AI-powered YouTube viral clipping, smart 9:16 reframing, caption rendering, and unlisted automation studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

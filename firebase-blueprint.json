@@ -1,0 +1,166 @@
+{
+  "entities": {
+    "JobRecord": {
+      "title": "JobRecord",
+      "description": "Persistent viral clipping job record with checkpoint state and authorization declaration",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "jobId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sourceVideoId": { "type": "string", "maxLength": 64 },
+        "sourceUrl": { "type": "string", "maxLength": 512 },
+        "title": { "type": "string", "maxLength": 300 },
+        "channelTitle": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 64 },
+        "authorizationStatus": { "type": "string", "enum": ["authorized_owner", "licensed", "creative_commons", "pending_declaration"] },
+        "status": {
+          "type": "string",
+          "enum": [
+            "discovered",
+            "awaiting_approval",
+            "queued",
+            "processing",
+            "transcribing",
+            "analyzing",
+            "clipping",
+            "rendering",
+            "quality_check",
+            "completed",
+            "awaiting_upload_approval",
+            "uploading",
+            "uploaded_unlisted",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "currentStep": { "type": "string", "maxLength": 120 },
+        "progress": { "type": "number" },
+        "clipCount": { "type": "number" },
+        "viralScore": { "type": "number" },
+        "retryCount": { "type": "number" },
+        "lastCheckpoint": { "type": "string", "maxLength": 120 },
+        "errorDetails": { "type": "string", "maxLength": 1000 },
+        "uploadStatus": { "type": "string", "maxLength": 64 },
+        "isTestMode": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId",
+        "jobId",
+        "sourceVideoId",
+        "sourceUrl",
+        "title",
+        "authorizationStatus",
+        "status",
+        "currentStep",
+        "progress",
+        "clipCount",
+        "viralScore",
+        "retryCount",
+        "lastCheckpoint",
+        "isTestMode",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ClipRecord": {
+      "title": "ClipRecord",
+      "description": "Generated 9:16 vertical clip with quality score, caption styling, audio mix, and unlisted upload state",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "clipId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "jobId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sourceVideoId": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "startSeconds": { "type": "number" },
+        "endSeconds": { "type": "number" },
+        "durationSeconds": { "type": "number" },
+        "qualityScore": { "type": "number" },
+        "privacyStatus": { "type": "string", "enum": ["unlisted"] },
+        "approvalStatus": { "type": "string", "enum": ["awaiting_review", "approved", "rejected", "uploaded_unlisted"] },
+        "youtubeVideoId": { "type": "string", "maxLength": 64 },
+        "driveFileId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId",
+        "clipId",
+        "jobId",
+        "sourceVideoId",
+        "title",
+        "startSeconds",
+        "endSeconds",
+        "durationSeconds",
+        "qualityScore",
+        "privacyStatus",
+        "approvalStatus",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ActivityEvent": {
+      "title": "ActivityEvent",
+      "description": "Audit log entry for discovery, viral scoring, approvals, rendering, and unlisted uploads",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "category": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["info", "success", "warning", "error"] },
+        "message": { "type": "string", "maxLength": 500 },
+        "jobId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "eventId", "category", "status", "message", "createdAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Per-user automation schedule, quality thresholds, and worker settings",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "automationEnabled": { "type": "boolean" },
+        "dailyTargetClips": { "type": "number" },
+        "scheduleTime": { "type": "string", "maxLength": 16 },
+        "timezone": { "type": "string", "maxLength": 64 },
+        "sourceDiversity": { "type": "boolean" },
+        "requireProcessingApproval": { "type": "boolean" },
+        "minQualityScore": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId",
+        "automationEnabled",
+        "dailyTargetClips",
+        "scheduleTime",
+        "timezone",
+        "sourceDiversity",
+        "requireProcessingApproval",
+        "minQualityScore",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/jobs/{jobId}": {
+      "schema": { "$ref": "#/entities/JobRecord" },
+      "description": "Persistent clipping jobs owned by authenticated creators"
+    },
+    "/clips/{clipId}": {
+      "schema": { "$ref": "#/entities/ClipRecord" },
+      "description": "Generated 9:16 vertical clips and unlisted upload state"
+    },
+    "/activity_logs/{eventId}": {
+      "schema": { "$ref": "#/entities/ActivityEvent" },
+      "description": "User activity and audit log events"
+    },
+    "/user_settings/{userId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Per-user automation and quality configuration"
+    }
+  }
+}
