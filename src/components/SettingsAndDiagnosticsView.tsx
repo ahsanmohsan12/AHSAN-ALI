@@ -21,6 +21,10 @@ import {
   ShieldCheck,
   Search,
   Youtube,
+  ExternalLink,
+  Key,
+  Copy,
+  Check,
 } from 'lucide-react';
 import {
   ActivityLogEntry,
@@ -117,6 +121,133 @@ export const SettingsAndDiagnosticsView: React.FC<SettingsAndDiagnosticsViewProp
   // Activity Log search & filter
   const [logSearch, setLogSearch] = useState('');
   const [logCategoryFilter, setLogCategoryFilter] = useState<string>('all');
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+
+  const handleCopyText = (id: string, value: string) => {
+    navigator.clipboard.writeText(value);
+    setCopiedKeyId(id);
+    window.setTimeout(() => {
+      setCopiedKeyId((prev) => (prev === id ? null : prev));
+    }, 1800);
+  };
+
+  const GCP_PROJECT_ID = 'project-b6a494f3-0013-410c-94c';
+  const REQUIRED_CREDENTIALS_HELPER = [
+    {
+      id: 'gemini_api_key',
+      envVar: 'GEMINI_API_KEY',
+      title: '1. Google Gemini API Key (AI Intelligence, Search Grounding, Thumbnails & TTS)',
+      requirementTier: 'Required · Auto-Injected in AI Studio',
+      tierColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+      usedFor:
+        'Powers Gemini 4 Argon (ThinkingLevel.HIGH transcript & viral moment ranking), Gemini 3.8 Flash (Google Search Grounding discovery & SEO metadata), Gemini 3.1 Flash Lite (instant hook scoring), Gemini Nano Banana 2.1 / 3 Pro Image (thumbnail generation), and Gemini 3.8 Flash TTS (voiceover preview).',
+      whereToGenerateLabel: 'Google AI Studio — API Keys Page',
+      consoleUrl: 'https://aistudio.google.com/app/apikey',
+      secondaryLabel: 'GCP Generative Language API Library',
+      secondaryUrl: `https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com?project=${GCP_PROJECT_ID}`,
+      scopesOrFormat: 'Server-side environment variable: GEMINI_API_KEY="AIzaSy..."',
+      setupSteps:
+        'Automatically injected at runtime in AI Studio. For external or self-hosted deployments, generate an API key in Google AI Studio or GCP Credentials and add GEMINI_API_KEY to your server Secrets (.env).',
+    },
+    {
+      id: 'google_oauth_client',
+      envVar: 'GOOGLE_CLIENT_ID',
+      title: '2. Google OAuth 2.0 Web Client ID & Consent Screen (User Workspace Sign-In)',
+      requirementTier: 'Required · Provisioned (Ani clipper)',
+      tierColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+      usedFor:
+        'Authenticates your Google account via the "Sign in with Google" popup in the top bar and issues client-side OAuth 2.0 Bearer tokens for YouTube, Google Drive, and Gmail without exposing client secrets.',
+      whereToGenerateLabel: 'GCP Console — APIs & Services > Credentials',
+      consoleUrl: `https://console.cloud.google.com/apis/credentials?project=${GCP_PROJECT_ID}`,
+      secondaryLabel: 'GCP OAuth Consent Screen & Test Users',
+      secondaryUrl: `https://console.cloud.google.com/apis/credentials/consent?project=${GCP_PROJECT_ID}`,
+      scopesOrFormat: `Authorized JS Origin: ${window.location.origin}`,
+      setupSteps:
+        'In GCP Credentials > Create Credentials > OAuth client ID (Web application), add the current app origin under Authorized JavaScript origins. In OAuth Consent Screen, add your Google email under Test Users while in Testing mode.',
+    },
+    {
+      id: 'youtube_data_api',
+      envVar: 'YOUTUBE_API_KEY',
+      title: '3. YouTube Data API v3 & YouTube Analytics API (Discovery, Metadata & Unlisted Uploads)',
+      requirementTier: 'OAuth Required + Optional Server API Key',
+      tierColor: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30',
+      usedFor:
+        'Discovers trending long-form videos across 9 niches, validates 11-char video IDs & source availability, tracks historical view/like/comment snapshots, reads channel analytics, and uploads approved 9:16 clips strictly as Unlisted (privacyStatus="unlisted").',
+      whereToGenerateLabel: 'Enable YouTube Data API v3 in GCP',
+      consoleUrl: `https://console.cloud.google.com/apis/library/youtube.googleapis.com?project=${GCP_PROJECT_ID}`,
+      secondaryLabel: 'Enable YouTube Analytics API in GCP',
+      secondaryUrl: `https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com?project=${GCP_PROJECT_ID}`,
+      scopesOrFormat:
+        'https://www.googleapis.com/auth/youtube.readonly, https://www.googleapis.com/auth/youtube.upload, https://www.googleapis.com/auth/yt-analytics.readonly',
+      setupSteps:
+        '1) Enable both YouTube Data API v3 and YouTube Analytics API in GCP Library. 2) Sign in with Google in the top bar for OAuth access. 3) (Optional) Create a restricted API Key in GCP Credentials and set YOUTUBE_API_KEY in Secrets for unauthenticated background discovery.',
+    },
+    {
+      id: 'google_drive_api',
+      envVar: 'drive.file (OAuth Scope)',
+      title: '4. Google Drive API v3 (ViralMint/ Folder Hierarchy, Checkpoints & Backups)',
+      requirementTier: 'Required for Drive Sync · Uses OAuth Token',
+      tierColor: 'text-sky-600 dark:text-sky-400 bg-sky-500/10 border-sky-500/30',
+      usedFor:
+        'Creates and syncs the 10-folder ViralMint/ workspace (jobs, sources, processing, completed, approved, uploaded, thumbnails, metadata, logs, backups) and exchanges job manifests with your Colab Tesla T4 worker.',
+      whereToGenerateLabel: 'Enable Google Drive API in GCP Library',
+      consoleUrl: `https://console.cloud.google.com/apis/library/drive.googleapis.com?project=${GCP_PROJECT_ID}`,
+      secondaryLabel: 'Open Google Drive Workspace',
+      secondaryUrl: 'https://drive.google.com/drive/my-drive',
+      scopesOrFormat: 'https://www.googleapis.com/auth/drive.file',
+      setupSteps:
+        'Enable Google Drive API in your Google Cloud project, click "Sign in with Google" in the top bar, then click "Initialize ViralMint Drive Folders" above.',
+    },
+    {
+      id: 'gmail_api',
+      envVar: 'gmail.send / gmail.readonly',
+      title: '5. Gmail API v1 (Automated Production Summary & Failure Alerts)',
+      requirementTier: 'Optional · Uses OAuth Token + User Confirmation',
+      tierColor: 'text-sky-600 dark:text-sky-400 bg-sky-500/10 border-sky-500/30',
+      usedFor:
+        'Sends formatted daily production summaries, approval queue alerts, and failed-job diagnostics directly from your authenticated Google account after explicit modal confirmation.',
+      whereToGenerateLabel: 'Enable Gmail API in GCP Library',
+      consoleUrl: `https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=${GCP_PROJECT_ID}`,
+      secondaryLabel: 'GCP OAuth Scopes Configuration',
+      secondaryUrl: `https://console.cloud.google.com/apis/credentials/consent?project=${GCP_PROJECT_ID}`,
+      scopesOrFormat:
+        'https://www.googleapis.com/auth/gmail.send, https://www.googleapis.com/auth/gmail.readonly',
+      setupSteps:
+        'Enable Gmail API in GCP Library and sign in with Google in the top bar. Every email dispatch prompts a confirmation dialog before sending.',
+    },
+    {
+      id: 'firebase_firestore',
+      envVar: 'firebase-applet-config.json',
+      title: '6. Firebase Authentication & Cloud Firestore (Persistent Job Queue & Audit State)',
+      requirementTier: 'Required · Provisioned & Deployed',
+      tierColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+      usedFor:
+        'Persists your 14-state job queue, last valid checkpoint recovery states, clip approval records, and user settings with zero-trust Firestore security rules.',
+      whereToGenerateLabel: 'Firebase Console — Firestore Database',
+      consoleUrl: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/firestore`,
+      secondaryLabel: 'Firebase Console — Authentication Providers',
+      secondaryUrl: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/authentication/providers`,
+      scopesOrFormat: 'Database ID: ai-studio-viralmintai-5d03d9c5-8ac4-4a22-b4a1-7c3a8fbbbc47',
+      setupSteps:
+        'Already provisioned in firebase-applet-config.json with Google Sign-In enabled and firestore.rules deployed.',
+    },
+    {
+      id: 'colab_worker_secret',
+      envVar: 'COLAB_WORKER_SECRET',
+      title: '7. Colab Tesla T4 GPU Worker Secret (External FFmpeg 1080p & Whisper Node)',
+      requirementTier: 'Optional · Recommended for Remote Colab GPU',
+      tierColor: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30',
+      usedFor:
+        'Authenticates heartbeat and checkpoint status updates between your Google Colab NVIDIA Tesla T4 GPU notebook and the /api/worker/heartbeat endpoint.',
+      whereToGenerateLabel: 'Open Google Colab (Select T4 GPU Runtime)',
+      consoleUrl: 'https://colab.research.google.com/',
+      secondaryLabel: 'GCP Service Accounts (Optional Headless Worker)',
+      secondaryUrl: `https://console.cloud.google.com/iam-admin/serviceaccounts?project=${GCP_PROJECT_ID}`,
+      scopesOrFormat: 'COLAB_WORKER_SECRET="your-custom-shared-secret"',
+      setupSteps:
+        'Download the ViralMint_Tesla_T4_Worker.ipynb notebook above, open it in Google Colab, set Runtime > Change runtime type > T4 GPU, and match COLAB_WORKER_SECRET if configured.',
+    },
+  ];
 
   const run13PointDiagnostics = async () => {
     setIsRunningHealth(true);
@@ -847,11 +978,197 @@ export const SettingsAndDiagnosticsView: React.FC<SettingsAndDiagnosticsViewProp
         </div>
       </div>
 
-      {/* 4. Complete 6-Integration API Specification, Scopes, Redirect URIs & Troubleshooting Reference */}
+      {/* 4. Complete API Keys & Credentials Provisioning Helper (Direct GCP & AI Studio Links) */}
+      <div
+        data-testid="api-keys-helper-section"
+        className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-5"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Key className="w-4 h-4 text-amber-400 shrink-0" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                Complete API Keys &amp; Credentials Helper (Full ViralMint Workflow)
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Every API key, OAuth 2.0 credential, and Google Cloud service required for discovery, Gemini analysis, Drive persistence, Gmail alerts, Colab T4 rendering, and Unlisted YouTube uploads—with direct links to your Google Cloud Console project (<code>{GCP_PROJECT_ID}</code>).
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                handleCopyText(
+                  'all_scopes',
+                  'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/yt-analytics.readonly'
+                )
+              }
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              {copiedKeyId === 'all_scopes' ? (
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+              {copiedKeyId === 'all_scopes' ? 'Copied All 6 OAuth Scopes' : 'Copy All 6 OAuth Scopes'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCopyText('js_origin', window.location.origin)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              {copiedKeyId === 'js_origin' ? (
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+              {copiedKeyId === 'js_origin' ? 'Copied Origin URL' : 'Copy Authorized JS Origin'}
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Google Cloud Console Shortcut Bar */}
+        <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs text-slate-600 dark:text-slate-400">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
+              Direct Console Shortcuts:
+            </span>{' '}
+            Open your Google Cloud Console or AI Studio to generate keys or enable APIs in one click:
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 font-semibold text-xs hover:bg-amber-300"
+            >
+              AI Studio API Keys
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <a
+              href={`https://console.cloud.google.com/apis/credentials?project=${GCP_PROJECT_ID}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              GCP Credentials Page
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <a
+              href={`https://console.cloud.google.com/apis/library?project=${GCP_PROJECT_ID}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              GCP API Library
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <a
+              href={`https://console.cloud.google.com/apis/credentials/consent?project=${GCP_PROJECT_ID}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              OAuth Consent Screen
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
+
+        {/* 7 Detailed Credential & API Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {REQUIRED_CREDENTIALS_HELPER.map((cred) => (
+            <div
+              key={cred.id}
+              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 flex flex-col justify-between gap-3"
+            >
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                    {cred.title}
+                  </h4>
+                  <span
+                    className={`px-2 py-0.5 rounded border text-[11px] font-mono font-semibold whitespace-nowrap ${cred.tierColor}`}
+                  >
+                    {cred.requirementTier}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <div className="text-[11px] font-mono text-slate-700 dark:text-slate-300 truncate">
+                    <span className="text-slate-400">Key / Identifier: </span>
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                      {cred.envVar}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText(cred.id, cred.envVar)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+                  >
+                    {copiedKeyId === cred.id ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-500" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  {cred.usedFor}
+                </p>
+
+                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/80 px-2.5 py-1.5 rounded border border-slate-200/70 dark:border-slate-800/70 break-all">
+                  {cred.scopesOrFormat}
+                </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    Setup Instructions:
+                  </span>{' '}
+                  {cred.setupSteps}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-2">
+                <a
+                  href={cred.consoleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 text-xs font-semibold hover:opacity-90"
+                >
+                  {cred.whereToGenerateLabel}
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href={cred.secondaryUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  {cred.secondaryLabel}
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 5. Complete 6-Integration API Specification, Scopes, Redirect URIs & Troubleshooting Reference */}
       <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
         <div>
           <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-            API &amp; Authentication Reference Matrix (Setup, Scopes, Origins &amp; Troubleshooting)
+            API &amp; Authentication Troubleshooting Reference Matrix
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Authorized JavaScript Origin: <code>{window.location.origin}</code> · OAuth Mode: Client-Side Popup PKCE / Bearer Header (avoids ephemeral iframe redirect_uri_mismatch).
@@ -871,7 +1188,16 @@ export const SettingsAndDiagnosticsView: React.FC<SettingsAndDiagnosticsViewProp
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               <tr>
                 <td className="py-2.5 px-3 font-semibold">A. Gemini API</td>
-                <td className="py-2.5 px-3">Google AI Studio &gt; Settings &gt; Secrets</td>
+                <td className="py-2.5 px-3">
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-400 inline-flex items-center gap-1"
+                  >
+                    AI Studio API Keys <ExternalLink className="w-3 h-3" />
+                  </a>
+                </td>
                 <td className="py-2.5 px-3 font-mono">GEMINI_API_KEY (Server-only)</td>
                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
                   403 PERMISSION_DENIED or 429 RESOURCE_EXHAUSTED: Attach a billing-enabled key in Secrets for Gemini 4 Argon &amp; Nano Banana 2.1.
@@ -879,7 +1205,16 @@ export const SettingsAndDiagnosticsView: React.FC<SettingsAndDiagnosticsViewProp
               </tr>
               <tr>
                 <td className="py-2.5 px-3 font-semibold">B. Google OAuth 2.0</td>
-                <td className="py-2.5 px-3">GCP Console &gt; APIs &amp; Services &gt; Credentials</td>
+                <td className="py-2.5 px-3">
+                  <a
+                    href={`https://console.cloud.google.com/apis/credentials?project=${GCP_PROJECT_ID}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-400 inline-flex items-center gap-1"
+                  >
+                    GCP Credentials <ExternalLink className="w-3 h-3" />
+                  </a>
+                </td>
                 <td className="py-2.5 px-3 font-mono">openid, email, profile · GOOGLE_CLIENT_ID</td>
                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
                   Ensure test users are added to OAuth Consent Screen while publishing status is in &quot;Testing&quot;.
@@ -887,15 +1222,33 @@ export const SettingsAndDiagnosticsView: React.FC<SettingsAndDiagnosticsViewProp
               </tr>
               <tr>
                 <td className="py-2.5 px-3 font-semibold">C. YouTube Data API v3</td>
-                <td className="py-2.5 px-3">GCP Library &gt; YouTube Data API v3</td>
-                <td className="py-2.5 px-3 font-mono">youtube.readonly, youtube.upload</td>
+                <td className="py-2.5 px-3">
+                  <a
+                    href={`https://console.cloud.google.com/apis/library/youtube.googleapis.com?project=${GCP_PROJECT_ID}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-400 inline-flex items-center gap-1"
+                  >
+                    GCP YouTube Data API <ExternalLink className="w-3 h-3" />
+                  </a>
+                </td>
+                <td className="py-2.5 px-3 font-mono">youtube.readonly, youtube.upload · YOUTUBE_API_KEY</td>
                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
                   403 quotaExceeded: Daily 10,000 unit limit resets at midnight PT; uploads enforce privacyStatus=&quot;unlisted&quot;.
                 </td>
               </tr>
               <tr>
                 <td className="py-2.5 px-3 font-semibold">D. YouTube Analytics API</td>
-                <td className="py-2.5 px-3">GCP Library &gt; YouTube Analytics API</td>
+                <td className="py-2.5 px-3">
+                  <a
+                    href={`https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com?project=${GCP_PROJECT_ID}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-400 inline-flex items-center gap-1"
+                  >
+                    GCP YouTube Analytics <ExternalLink className="w-3 h-3" />
+                  </a>
+                </td>
                 <td className="py-2.5 px-3 font-mono">yt-analytics.readonly</td>
                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
                   403 Forbidden: Verify the signed-in Google account owns an initialized YouTube channel.
@@ -903,7 +1256,16 @@ export const SettingsAndDiagnosticsView: React.FC<SettingsAndDiagnosticsViewProp
               </tr>
               <tr>
                 <td className="py-2.5 px-3 font-semibold">E. Google Drive &amp; Gmail</td>
-                <td className="py-2.5 px-3">GCP Library &gt; Google Drive API &amp; Gmail API</td>
+                <td className="py-2.5 px-3">
+                  <a
+                    href={`https://console.cloud.google.com/apis/library/drive.googleapis.com?project=${GCP_PROJECT_ID}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-400 inline-flex items-center gap-1"
+                  >
+                    GCP Drive &amp; Gmail Library <ExternalLink className="w-3 h-3" />
+                  </a>
+                </td>
                 <td className="py-2.5 px-3 font-mono">drive.file, gmail.send, gmail.readonly</td>
                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
                   401 Unauthorized: Re-authenticate via &quot;Sign in with Google&quot; to refresh in-memory access token.
@@ -911,8 +1273,17 @@ export const SettingsAndDiagnosticsView: React.FC<SettingsAndDiagnosticsViewProp
               </tr>
               <tr>
                 <td className="py-2.5 px-3 font-semibold">F. Colab Tesla T4 Worker</td>
-                <td className="py-2.5 px-3">Google Colab &gt; Runtime &gt; Change to T4 GPU</td>
-                <td className="py-2.5 px-3 font-mono">WORKER_SHARED_SECRET</td>
+                <td className="py-2.5 px-3">
+                  <a
+                    href="https://colab.research.google.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-400 inline-flex items-center gap-1"
+                  >
+                    Google Colab T4 Runtime <ExternalLink className="w-3 h-3" />
+                  </a>
+                </td>
+                <td className="py-2.5 px-3 font-mono">COLAB_WORKER_SECRET</td>
                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
                   Runtime disconnect: Re-run Cell 3 &amp; 4 in Colab to resume from last checkpoint in ViralMint/jobs/.
                 </td>
